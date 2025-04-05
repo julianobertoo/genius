@@ -1,0 +1,144 @@
+"use client"
+
+import { useState } from "react"
+import { SafeAreaView, StyleSheet, View, Text, TouchableOpacity, Alert } from "react-native"
+
+// Simple difficulty settings
+const DIFFICULTY = {
+  EASY: { steps: 2, speed: 1000 },
+  MEDIUM: { steps: 3, speed: 800 },
+  HARD: { steps: 4, speed: 600 },
+}
+
+export default function App() {
+  const [playing, setPlaying] = useState(false)
+  const [difficulty, setDifficulty] = useState(DIFFICULTY.EASY)
+  const [sequence, setSequence] = useState([])
+  const [playerSequence, setPlayerSequence] = useState([])
+  const [showingSequence, setShowingSequence] = useState(false)
+  const [activeSquare, setActiveSquare] = useState(null)
+  const [score, setScore] = useState(0)
+
+  // Start game with selected difficulty
+  const startGame = (level) => {
+    setDifficulty(level)
+    setPlaying(true)
+    setScore(0)
+    generateSequence(level.steps)
+  }
+
+  // Create random sequence
+  const generateSequence = (steps) => {
+    const newSequence = []
+    for (let i = 0; i < steps; i++) {
+      newSequence.push(Math.floor(Math.random() * 9))
+    }
+    setSequence(newSequence)
+    setPlayerSequence([])
+
+    setTimeout(() => {
+      setShowingSequence(true)
+      showSequence(newSequence)
+    }, 1000)
+  }
+
+  // Show the sequence to player
+  const showSequence = async (seq) => {
+    for (let i = 0; i < seq.length; i++) {
+      setActiveSquare(seq[i])
+      await new Promise((resolve) => setTimeout(resolve, difficulty.speed))
+      setActiveSquare(null)
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+    setShowingSequence(false)
+  }
+
+  // Handle player taps
+  const handleSquarePress = (index) => {
+    if (showingSequence || !playing) return
+
+    const newPlayerSequence = [...playerSequence, index]
+    setPlayerSequence(newPlayerSequence)
+
+    // Check if player made a mistake
+    if (index !== sequence[playerSequence.length]) {
+      Alert.alert("Erro!", "Sequência errada! Tente novamente.")
+      generateSequence(difficulty.steps)
+      return
+    }
+
+    // Check if player completed the sequence
+    if (newPlayerSequence.length === sequence.length) {
+      setScore(score + 1)
+      setTimeout(() => {
+        const newSequence = [...sequence, Math.floor(Math.random() * 9)]
+        setSequence(newSequence)
+        setPlayerSequence([])
+        setShowingSequence(true)
+        showSequence(newSequence)
+      }, 1000)
+    }
+  }
+
+  // Colors for squares
+  const colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan", "magenta"]
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {!playing ? (
+        <View style={styles.menu}>
+          <Text style={styles.title}>Jogo da Memória</Text>
+          <TouchableOpacity style={styles.button} onPress={() => startGame(DIFFICULTY.EASY)}>
+            <Text style={styles.buttonText}>Fácil</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={() => startGame(DIFFICULTY.MEDIUM)}>
+            <Text style={styles.buttonText}>Médio</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={() => startGame(DIFFICULTY.HARD)}>
+            <Text style={styles.buttonText}>Difícil</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.game}>
+          <Text style={styles.score}>Pontuação: {score}</Text>
+          <Text style={styles.instruction}>{showingSequence ? "Observe a sequência..." : "Repita a sequência!"}</Text>
+
+          <View style={styles.grid}>
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.square,
+                  { backgroundColor: colors[index] },
+                  activeSquare === index && styles.activeSquare,
+                ]}
+                onPress={() => handleSquarePress(index)}
+                disabled={showingSequence}
+              />
+            ))}
+          </View>
+
+          <TouchableOpacity style={styles.backButton} onPress={() => setPlaying(false)}>
+            <Text style={styles.buttonText}>Voltar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </SafeAreaView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#222" },
+  menu: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
+  title: { fontSize: 24, color: "white", marginBottom: 30 },
+  button: { width: 200, padding: 10, backgroundColor: "#444", marginBottom: 10, alignItems: "center" },
+  buttonText: { color: "white", fontSize: 16 },
+  game: { flex: 1, justifyContent: "center", alignItems: "center", padding: 10 },
+  score: { fontSize: 18, color: "white", marginBottom: 10 },
+  instruction: { fontSize: 16, color: "white", marginBottom: 20 },
+  grid: { width: 300, height: 300, flexDirection: "row", flexWrap: "wrap" },
+  square: { width: 90, height: 90, margin: 5 },
+  activeSquare: { opacity: 0.5 },
+  backButton: { marginTop: 20, padding: 10, backgroundColor: "#444", width: 100, alignItems: "center" },
+})
+
